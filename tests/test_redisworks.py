@@ -11,6 +11,7 @@ To run a specific test, run this from the root of repo:
 
 from decimal import Decimal
 import datetime
+import time
 from dot import LazyDot
 from redisworks import Root
 from redisworks.redisworks import bTYPE_IDENTIFIER, bITEM_DIVIDER
@@ -212,3 +213,9 @@ class TestRedisworks:
         self.root.flush()
 
         assert self.root.string == VALUE
+
+    def test_ttl_operations(self):
+        self.root.foo(9, ttl=5)
+        self.root.flush()
+        time.sleep(5)
+        assert self.root.foo is None
