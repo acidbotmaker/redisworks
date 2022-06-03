@@ -222,15 +222,12 @@ class TestRedisworks:
         assert self.root.string == VALUE
 
     def test_ttl_operations(self):
+        # Need real redis connection, as FakeRedis doesn't work with expire
         redis_conn = redis.Redis()
         root = Root(conn=redis_conn)
 
         root.foo = WithTTL(9, ttl=4)
         root.flush()
-        del root
-
         time.sleep(5)
-
-        root = Root(conn=redis_conn)
         # Logic to check if we have a value in LazyDot object
         assert str(root.foo) == "None"

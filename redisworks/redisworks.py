@@ -4,6 +4,7 @@ import json
 import logging
 import builtins
 import datetime
+import time
 from dot import Dot
 from dot.dot import NATIVE_ATTRS
 from redis import StrictRedis
@@ -62,6 +63,7 @@ class Root(Dot):
         super(Root, self).__init__()
         self.red = conn or redis(host=host, port=port, db=db, *args, **kwargs)
         self.return_object = return_object
+        self.ttl_store = {}
         self.setup()
 
     @staticmethod
@@ -177,6 +179,14 @@ class Root(Dot):
 
         return result
 
+    def __getattr__(self, item):
+        # TODO: Find better way to store local cache before flushing
+        if item in self.ttl_store:
+            if self.ttl_store[item] < time.time():
+                del self.ttl_store[item]
+                return None
+        return self._lazyget(item)
+
     # Custom lazyset method to set with ttl
     def _lazyset_immediate_child(self, item, value, ttl=None):
         item = self._registry._checkint(item)
@@ -198,6 +208,8 @@ class Root(Dot):
             self.__dict__[item] = value
         else:
             if isinstance(value, WithTTL):
+                # TODO: Find better way to store local cache before flushing
+                self.ttl_store[item] = time.time() + value.ttl
                 self._lazyset_immediate_child(item, value.value, ttl=value.ttl)
             else:
                 self._lazyset_immediate_child(item, value)
