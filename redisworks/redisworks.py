@@ -5,12 +5,14 @@ import logging
 import builtins
 import datetime
 from dot import Dot
+from dot.dot import NATIVE_ATTRS
 from redis import StrictRedis
 from redis.exceptions import ResponseError
 from decimal import Decimal
 from collections import Iterable
 from collections import MutableMapping
 from builtins import int
+from .WithTTL import WithTTL
 strings = (str, bytes)  # which are both basestring
 numbers = (int, float, complex, datetime.datetime, datetime.date, Decimal)
 items = 'items'
@@ -175,7 +177,32 @@ class Root(Dot):
 
         return result
 
-    def __save_in_redis(self, path, value):
+    # Custom lazyset method to set with ttl
+    def _lazyset_immediate_child(self, item, value, ttl=None):
+        item = self._registry._checkint(item)
+        item = "%s.%s" % (self._registry.root_name, item)
+        
+        try:
+            self.save(item, value)
+            if ttl is not None:
+                self.red.expire(item, ttl)
+        except:
+            raise
+        else:
+            self._registry.evaluated_items[item] = value
+
+    # Custom setattr method
+    def __setattr__(self, item, value):
+        if item in NATIVE_ATTRS or not self._is_setup:
+            # Assign to __dict__ to avoid infinite __setattr__ loops.
+            self.__dict__[item] = value
+        else:
+            if isinstance(value, WithTTL):
+                self._lazyset_immediate_child(item, value.value, ttl=value.ttl)
+            else:
+                self._lazyset_immediate_child(item, value)
+
+    def __save_in_redis(self, path, value, ttl=None):
         if isinstance(value, strings):
             value = self.doformat(value)
             self.red.set(path, value)

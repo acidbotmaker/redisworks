@@ -1,4 +1,5 @@
 import logging
+from .WithTTL import WithTTL
 from .redisworks import Root  # NOQA
 
 __version__ = '0.3.0'

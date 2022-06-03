@@ -13,9 +13,10 @@ from decimal import Decimal
 import datetime
 import time
 from dot import LazyDot
-from redisworks import Root
+from redisworks import Root, WithTTL
 from redisworks.redisworks import bTYPE_IDENTIFIER, bITEM_DIVIDER
 from fakeredis import FakeStrictRedis
+import redis
 import logging
 logging.disable(logging.CRITICAL)
 
@@ -221,7 +222,15 @@ class TestRedisworks:
         assert self.root.string == VALUE
 
     def test_ttl_operations(self):
-        self.root.foo(9, ttl=5)
-        self.root.flush()
+        redis_conn = redis.Redis()
+        root = Root(conn=redis_conn)
+
+        root.foo = WithTTL(9, ttl=4)
+        root.flush()
+        del root
+
         time.sleep(5)
-        assert self.root.foo is None
+
+        root = Root(conn=redis_conn)
+        # Logic to check if we have a value in LazyDot object
+        assert str(root.foo) == "None"
